@@ -1,0 +1,188 @@
+#!/bin/bash -
+
+KNIFE="/usr/local/bin/knife"
+KNIFE_OPTS="--no-color --disable-editing"
+BASE_DIR="$HOME/hosted_chef"
+DEBUG=1
+
+function __knife () {
+    local cmd=$1
+    local opt=$2
+
+    # building knife command and defining error file
+    command="${KNIFE} ${cmd} ${KNIFE_OPTS} ${opt}"
+    error_file=$(mktemp)
+
+    output=$(${command} 2> ${error_file})
+
+    if [ $? != 0 ]; then
+        error_msg="$(cat ${error_file} 2> /dev/null)"
+        rm -f ${error_file} > /dev/null 2>&1
+        __die "Knife command: \"${command}\", Error: \"${error_msg}\""
+    fi
+
+    echo "${output}"
+}
+
+function __knife_list () {
+    local subcommand=$*
+
+    let i=0
+    declare -a output=()
+    while read -r line ; do
+        # line starts with comment, we don't want
+        ( echo $line |grep -q -E '^#' ) && continue
+        # replacing spaces for "=" string
+        line="$(echo $line |sed -r 's/\s+/=/g')"
+        eval "output[$i]='${line}'"
+        ((++i))
+    done < <(__knife "${subcommand}" "--format=text")
+
+    echo "${output[@]}"
+}
+
+function __knife_download () {
+    local cookbook=$1
+    local version=$2
+    local directory=$3
+
+    __knife "cookbook download ${cookbook}" \
+        "--latest --force --dir ${directory}" > /dev/null
+
+    origin_dir="${directory}/${cookbook}-${version}"
+    dest_dir="${directory}/${cookbook}"
+
+    # moving towards a directory that not contains version, default for chef
+    mv $origin_dir $dest_dir || \
+        __die "Can't move: \"${origin_dir}\" ->\"${dest_dir}\""
+}
+
+function __knife_show () {
+    local entity=$1
+    local item=$2
+    local target=$3
+
+    # empty out the target file first
+    if [ -e $target ]; then
+        cat /dev/null > $target
+        __warn "File exists, contents OVERWROTE! \"${target}\""
+    fi
+
+    __knife "${entity} show ${item}" --format=json \
+        |grep -v -E '^#' 1> $target
+}
+
+function __warn () {
+    local message=$1
+    echo "[WARN] $message" >&2
+}
+
+function __die () {
+    local message=$1
+    echo "[ERROR] $message" >&2
+    exit 1
+}
+
+#### Boilerplates ############################################################
+#
+
+if [ ! -d $BASE_DIR ]; then
+    __die "BASE_DIR not not found at: \"${BASE_DIR}\""
+fi
+
+#### Main ####################################################################
+#
+
+declare -a commands=('environment' 'role' 'node' 'cookbook' 'data bag')
+
+for cmd in "${commands[@]}" ; do
+    echo "# Looking for Chef's entity: \"${cmd}\""
+
+    # defining where to locally store Chef data
+    dir_name="$(echo "${cmd}" |sed -r 's/\s+/_/g')"
+    dir_path="${BASE_DIR}/${dir_name}"
+
+    echo "## Target directory: \"${dir_path}\""
+    if [ ! -d $dir_path ]; then
+        mkdir $dir_path || __die "Can't create directory: ${dir_path}"
+    fi
+
+    #### Chef Download #######################################################
+    #
+    declare -a items=($(__knife_list "${cmd} list"))
+    #
+    # TODO
+    #   * check if there's items being listed, if not it should warn/die;
+    #   * include parameter to ignore given entities;
+    #
+    for item in "${items[@]}"; do
+        # we're not interested on "_default" environment
+        [[ "$cmd" == "environment" && "$item" == "_default" ]] && continue
+
+        if   [[ "$cmd" == "cookbook" ]]; then
+            #### Cookbooks Download ##########################################
+            # Downloading the cookbook data toward the cookbook reserved
+            # directory.
+            #
+            name=""
+            version=""
+
+            # poor's man parsing of cookbook name and version
+            eval "$(echo ${item} |awk -F '=' '{print "name="$1" version="$2}')"
+
+            if [ -z $name -o -z $version ]; then
+                __warn "Can't parse cookbook's name and/or version (${item})."
+                continue
+            fi
+
+            # cookbooks directory path
+            target_dir="${dir_path}/${cookbook_name}"
+
+            echo "### \"${cmd}\": \"${name}\" \"${version}\" (\"${target_dir}\")"
+
+            if [ -e $target_dir ]; then
+                __warn "Cookbook will be refreshed: \"${target_dir}\""
+                rm -rf "$target_dir" || \
+                    __die "Can't remove directory: \"${target_dir}\""
+            fi
+
+            __knife_download "${name}" "${version}" "${dir_path}"
+
+        elif [[ "$cmd" == "data bag" ]]; then
+            #### Data Bags ###################################################
+            # Data bags need to be interated using sub-command "list" in order
+            # to discover elements on each data-bag and finally using "show"
+            # to save it's json on the file-system
+            #
+            data_bag_dir="${dir_path}/${item}"
+
+            if [ ! -d $data_bag_dir ]; then
+                mkdir  $data_bag_dir || \
+                    __die "Can't create directory: \"${data_bag_dir}\""
+            fi
+
+            echo "### \"${cmd}\": \"${item}\" (\"${data_bag_dir}\")"
+
+            # listing attributes of current data-bag
+            declare -a bags=($(__knife_list "${cmd} show ${item}"))
+
+            for bag in "${bags[@]}" ; do
+                target="${data_bag_dir}/${bag}.json"
+                echo "#### Data-bag \"${item}\", \"${bag}\": \"${target}\""
+                __knife_show "${cmd}" "${item} ${bag}" $target
+            done
+
+        else
+            #### Environments, Roles and Nodes ###############################
+            # Or in other words, everyone that can be loaded with Knife's
+            # "show" option are handled here.
+            #
+            target="${dir_path}/${item}.json"
+            echo "### ${cmd}: \"${item}\" (\"${target}\")"
+
+            __knife_show "${cmd}" "${item}" $target
+        fi
+    done
+done
+
+# EOF
