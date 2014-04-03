@@ -25,7 +25,7 @@ function parse_cmdl_args () {
     for i do
         case $i in
             --help|-h)  show_usage && exit 1;;
-            --basedir)  BASEDIR=$2; shift 2 ;;
+            --basedir)  BASE_DIR=$2; shift 2 ;;
             --knife)    KNIFE=$2; shift 2 ;;
             --download) DOWNLOAD=1; shift ;;
             --upload)   UPLOAD=1; shift ;;
@@ -231,7 +231,7 @@ function chef_upload () {
 
 parse_cmdl_args $@
 
-if [ ! -d $BASE_DIR ]; then
+if [[ ( -z $BASE_DIR ) || ( ! -d $BASE_DIR ) ]]; then
     __die "BASE_DIR not not found at: \"${BASE_DIR}\""
 fi
 
