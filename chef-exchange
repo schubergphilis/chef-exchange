@@ -140,7 +140,7 @@ function chef_download_cookbook () {
         # cookbooks directory path
         target_dir="${dir_path}/${name}"
 
-        echo "### \"${cmd}\": \"${name}\" \"${version}\" (\"${target_dir}\")"
+        echo "### \"${entity}\": \"${name}\" \"${version}\" (\"${target_dir}\")"
 
         if [ -e $target_dir ]; then
             __warn "Cookbook will be refreshed: \"${target_dir}\""
@@ -160,7 +160,7 @@ function chef_download_databag () {
     local entity=$2
     local databag=$3
 
-    data_bag_dir="${dir_path}/${entity}"
+    data_bag_dir="${dir_path}/${databag}"
 
     if [ ! -d $data_bag_dir ]; then
         mkdir  $data_bag_dir || \
@@ -260,7 +260,8 @@ fi
 #### Main ####################################################################
 #
 
-declare -a commands=('environment' 'role' 'node' 'cookbook' 'data bag')
+# declare -a commands=('environment' 'role' 'node' 'cookbook' 'data bag')
+declare -a commands=('data bag')
 
 for cmd in "${commands[@]}" ; do
     [[ $DOWNLOAD == 1 ]] && chef_download "${cmd}"
