@@ -174,7 +174,7 @@ function chef_download_databag () {
 
     for bag in "${bags[@]}" ; do
         target="${data_bag_dir}/${bag}.json"
-        echo "#### Data-bag \"${entity}\", \"${bag}\": \"${target}\""
+        echo "#### \"${entity}\", \"${bag}\": \"${target}\""
         __knife_show "${entity}" "${databag} ${bag}" $target
     done
 }
@@ -260,8 +260,7 @@ fi
 #### Main ####################################################################
 #
 
-# declare -a commands=('environment' 'role' 'node' 'cookbook' 'data bag')
-declare -a commands=('data bag')
+declare -a commands=('environment' 'role' 'node' 'cookbook' 'data bag')
 
 for cmd in "${commands[@]}" ; do
     [[ $DOWNLOAD == 1 ]] && chef_download "${cmd}"
