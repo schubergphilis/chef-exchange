@@ -202,13 +202,25 @@ function chef_download () {
     #   * include parameter to ignore given entities;
     #
     for item in "${items[@]}"; do
-        # we're not interested on "_default" environment
-        [[ "$entity" == "environment" && "$item" == "_default" ]] && continue
+        # we're not interested on "_default" environment, by default :-)
+        [[ "${entity}" == "environment" && \
+           "${item}" == "_default" ]] && continue
 
         if   [[ "$entity" == "cookbook" ]]; then
-            chef_download_cookbook $dir_path $entity $item
+            #### Cookbooks Download ##########################################
+            # Downloading the cookbook data toward the cookbook reserved
+            # directory.
+            #
+            chef_download_cookbook "${dir_path}" "${entity}" "${item}"
+
         elif [[ "$entity" == "data bag" ]]; then
-            chef_download_databag $dir_path $entity $item
+            #### Data Bags ###################################################
+            # Data bags need to be interated using sub-command "list" in order
+            # to discover elements on each data-bag and finally using "show"
+            # to save it's json on the file-system
+            #
+            chef_download_databag "${dir_path}" "${entity}" "${item}"
+
         else
             #### Environments, Roles and Nodes ###############################
             # Or in other words, everyone that can be loaded with Knife's
