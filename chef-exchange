@@ -1,9 +1,47 @@
 #!/bin/bash -
 
+#### Globals #################################################################
+# Assumptions we will make, some of them informed by options on command line.
+#
+
 KNIFE="/usr/local/bin/knife"
 KNIFE_OPTS="--no-color --disable-editing"
-BASE_DIR="$HOME/hosted_chef"
-DEBUG=1
+BASE_DIR=""
+DOWNLOAD=0
+UPLOAD=0
+
+#### Parsing Command-Line and Usage ##########################################
+#
+
+function parse_cmdl_args () {
+    local opts="basedir:,knife:,download,upload,help"
+    local args=$(getopt -o 'h' --long "help,${opts}" -n "$0" -- "$@")
+
+    # whitout arguments parsed, help will take place
+    [ $# -lt 1 -o $? != 0  ] && show_usage && exit 1
+
+    # "infecting" the environment with command line args
+    eval set -- $args
+    for i do
+        case $i in
+            --help|-h)  show_usage && exit 1;;
+            --basedir)  BASEDIR=$2; shift 2 ;;
+            --knife)    KNIFE=$2; shift 2 ;;
+            --download) DOWNLOAD=1; shift ;;
+            --upload)   UPLOAD=1; shift ;;
+            --)         shift && break;;
+        esac
+    done
+}
+
+function show_usage () {
+    cat <<EOM
+help message shall be here!
+EOM
+}
+
+#### Knife and Helpers #######################################################
+#
 
 function __knife () {
     local cmd=$1
@@ -86,9 +124,30 @@ function __die () {
 #### Boilerplates ############################################################
 #
 
+parse_cmdl_args $@
+
 if [ ! -d $BASE_DIR ]; then
     __die "BASE_DIR not not found at: \"${BASE_DIR}\""
 fi
+
+if [ ! -e $KNIFE ]; then
+    __die "KNIFE not found at: \"${KNIFE}\""
+fi
+
+# only download or upload at once
+if [[ ( $DOWNLOAD == 0 && $UPLOAD == 0 ) || \
+      ( $DOWNLOAD == 1 && $UPLOAD == 1 ) ]] ; then
+    __die "Either --download or --upload must be informed. Check --help also."
+fi
+
+
+echo "Debug ->    KNIFE #${KNIFE}#"
+echo "Debug -> BASE_DIR #${BASE_DIR}#"
+echo "Debug -> DOWNLOAD #${DOWNLOAD}#"
+echo "Debug ->   UPLOAD #${UPLOAD}#"
+
+exit
+
 
 #### Main ####################################################################
 #
