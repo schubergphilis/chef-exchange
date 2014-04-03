@@ -235,7 +235,24 @@ function chef_download () {
 
 function chef_upload () {
     local entity=$1
-    echo "Debug -> upload #${entity}#"
+
+    echo "# Uploading Chef's entity: \"${entity}\""
+
+    # defining where to locally store Chef data
+    dir_name="$(echo "${entity}" |sed -r 's/\s+/_/g')"
+    dir_path="${BASE_DIR}/${dir_name}"
+
+    echo "## Source directory: \"${dir_path}\""
+    if [ ! -d $dir_path ]; then
+        __die "Can't find directory: ${dir_path}"
+    fi
+
+    # errors will be reported afterwards, since array will have no items
+    declare -a items=($(/bin/ls -1 ${dir_path} 2> /dev/null))
+
+    for item in "${items[@]}"; do
+        echo "Debug -> item #${item}#"
+    done
 }
 
 #### Boilerplates ############################################################
