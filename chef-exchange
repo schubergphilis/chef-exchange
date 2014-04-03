@@ -6,6 +6,7 @@
 
 KNIFE="/usr/local/bin/knife"
 KNIFE_OPTS="--no-color --disable-editing"
+KNIFE_CONFIG=""
 BASE_DIR=""
 DOWNLOAD=0
 UPLOAD=0
@@ -14,7 +15,7 @@ UPLOAD=0
 #
 
 function parse_cmdl_args () {
-    local opts="basedir:,knife:,download,upload,help"
+    local opts="basedir:,knife:,kniferb:,download,upload,help"
     local args=$(getopt -o 'h' --long "help,${opts}" -n "$0" -- "$@")
 
     # whitout arguments parsed, help will take place
@@ -27,6 +28,7 @@ function parse_cmdl_args () {
             --help|-h)  show_usage && exit 1;;
             --basedir)  BASE_DIR=$2; shift 2 ;;
             --knife)    KNIFE=$2; shift 2 ;;
+            --kniferb)  KNIFE_CONFIG=$2; shift 2 ;;
             --download) DOWNLOAD=1; shift ;;
             --upload)   UPLOAD=1; shift ;;
             --)         shift && break;;
@@ -252,10 +254,17 @@ function chef_upload () {
 
     for item in "${items[@]}"; do
         echo "Debug -> item #${item}#"
+        if   [[ "$entity" == "cookbook" ]]; then
+            echo "Debug -> cookbook upload..."
+        elif [[ "$entity" == "data bag" ]]; then
+            echo "Debug -> data bag upload..."
+        else
+            echo "Debug -> something else (${item}) upload..."
+        fi
     done
 }
 
-#### Boilerplates ############################################################
+#### Command-Line and Boilerplates ###########################################
 #
 
 parse_cmdl_args $@
@@ -266,6 +275,14 @@ fi
 
 if [ ! -e $KNIFE ]; then
     __die "KNIFE not found at: \"${KNIFE}\""
+fi
+
+# knife configuration file option informed but file not found
+if [[ ( ! -z $KNIFE_CONFIG ) && ( ! -e $KNIFE_CONFIG ) ]]; then
+    __die "Knife config file (knife.rb) is not found at: \"${KNIFE_CONFIG}\""
+else
+    # will be placed among the default knife options
+    KNIFE_OPTS="${KNIFE_OPTS} --config ${KNIFE_CONFIG}"
 fi
 
 # only download or upload at once
