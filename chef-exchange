@@ -121,6 +121,111 @@ function __die () {
     exit 1
 }
 
+#### Chef Download and Upload ################################################
+#
+
+function chef_download_cookbook () {
+    local dir_path=$1
+    local entity=$2
+    local cookbook=$3
+
+    # variable placeholders to cookbook name and version
+    name=""
+    version=""
+
+    # poor's man parsing of cookbook name and version
+    eval "$(echo ${cookbook} |awk -F '=' '{print "name="$1" version="$2}')"
+
+    if [ ! -z $name -o ! -z $version ]; then
+        # cookbooks directory path
+        target_dir="${dir_path}/${name}"
+
+        echo "### \"${cmd}\": \"${name}\" \"${version}\" (\"${target_dir}\")"
+
+        if [ -e $target_dir ]; then
+            __warn "Cookbook will be refreshed: \"${target_dir}\""
+            rm -rf "$target_dir" || \
+                __die "Can't remove directory: \"${target_dir}\""
+        fi
+
+        __knife_download "${name}" "${version}" "${dir_path}"
+    else
+        __warn "Can't parse cookbook's name and/or version (${cookbook})."
+    fi
+
+}
+
+function chef_download_databag () {
+    local dir_path=$1
+    local entity=$2
+    local databag=$3
+
+    data_bag_dir="${dir_path}/${entity}"
+
+    if [ ! -d $data_bag_dir ]; then
+        mkdir  $data_bag_dir || \
+            __die "Can't create directory: \"${data_bag_dir}\""
+    fi
+
+    echo "### \"${entity}\": \"${databag}\" (\"${data_bag_dir}\")"
+
+    # listing attributes of current data-bag
+    declare -a bags=($(__knife_list "${entity} show ${databag}"))
+
+    for bag in "${bags[@]}" ; do
+        target="${data_bag_dir}/${bag}.json"
+        echo "#### Data-bag \"${entity}\", \"${bag}\": \"${target}\""
+        __knife_show "${entity}" "${databag} ${bag}" $target
+    done
+}
+
+function chef_download () {
+    local entity=$1
+
+    echo "# Looking for Chef's entity: \"${entity}\""
+
+    # defining where to locally store Chef data
+    dir_name="$(echo "${entity}" |sed -r 's/\s+/_/g')"
+    dir_path="${BASE_DIR}/${dir_name}"
+
+    echo "## Target directory: \"${dir_path}\""
+    if [ ! -d $dir_path ]; then
+        mkdir $dir_path || __die "Can't create directory: ${dir_path}"
+    fi
+
+    #### Chef Download #######################################################
+    #
+    declare -a items=($(__knife_list "${entity} list"))
+    #
+    # TODO
+    #   * check if there's items being listed, if not it should warn/die;
+    #   * include parameter to ignore given entities;
+    #
+    for item in "${items[@]}"; do
+        # we're not interested on "_default" environment
+        [[ "$entity" == "environment" && "$item" == "_default" ]] && continue
+
+        if   [[ "$entity" == "cookbook" ]]; then
+            chef_download_cookbook $dir_path $entity $item
+        elif [[ "$entity" == "data bag" ]]; then
+            chef_download_databag $dir_path $entity $item
+        else
+            #### Environments, Roles and Nodes ###############################
+            # Or in other words, everyone that can be loaded with Knife's
+            # "show" option are handled here.
+            #
+            target="${dir_path}/${item}.json"
+            echo "### ${cmd}: \"${item}\" (\"${target}\")"
+            __knife_show "${cmd}" "${item}" $target
+        fi
+    done
+}
+
+function chef_upload () {
+    local entity=$1
+    echo "Debug -> upload #${entity}#"
+}
+
 #### Boilerplates ############################################################
 #
 
@@ -140,108 +245,14 @@ if [[ ( $DOWNLOAD == 0 && $UPLOAD == 0 ) || \
     __die "Either --download or --upload must be informed. Check --help also."
 fi
 
-
-echo "Debug ->    KNIFE #${KNIFE}#"
-echo "Debug -> BASE_DIR #${BASE_DIR}#"
-echo "Debug -> DOWNLOAD #${DOWNLOAD}#"
-echo "Debug ->   UPLOAD #${UPLOAD}#"
-
-exit
-
-
 #### Main ####################################################################
 #
 
 declare -a commands=('environment' 'role' 'node' 'cookbook' 'data bag')
 
 for cmd in "${commands[@]}" ; do
-    echo "# Looking for Chef's entity: \"${cmd}\""
-
-    # defining where to locally store Chef data
-    dir_name="$(echo "${cmd}" |sed -r 's/\s+/_/g')"
-    dir_path="${BASE_DIR}/${dir_name}"
-
-    echo "## Target directory: \"${dir_path}\""
-    if [ ! -d $dir_path ]; then
-        mkdir $dir_path || __die "Can't create directory: ${dir_path}"
-    fi
-
-    #### Chef Download #######################################################
-    #
-    declare -a items=($(__knife_list "${cmd} list"))
-    #
-    # TODO
-    #   * check if there's items being listed, if not it should warn/die;
-    #   * include parameter to ignore given entities;
-    #
-    for item in "${items[@]}"; do
-        # we're not interested on "_default" environment
-        [[ "$cmd" == "environment" && "$item" == "_default" ]] && continue
-
-        if   [[ "$cmd" == "cookbook" ]]; then
-            #### Cookbooks Download ##########################################
-            # Downloading the cookbook data toward the cookbook reserved
-            # directory.
-            #
-            name=""
-            version=""
-
-            # poor's man parsing of cookbook name and version
-            eval "$(echo ${item} |awk -F '=' '{print "name="$1" version="$2}')"
-
-            if [ -z $name -o -z $version ]; then
-                __warn "Can't parse cookbook's name and/or version (${item})."
-                continue
-            fi
-
-            # cookbooks directory path
-            target_dir="${dir_path}/${cookbook_name}"
-
-            echo "### \"${cmd}\": \"${name}\" \"${version}\" (\"${target_dir}\")"
-
-            if [ -e $target_dir ]; then
-                __warn "Cookbook will be refreshed: \"${target_dir}\""
-                rm -rf "$target_dir" || \
-                    __die "Can't remove directory: \"${target_dir}\""
-            fi
-
-            __knife_download "${name}" "${version}" "${dir_path}"
-
-        elif [[ "$cmd" == "data bag" ]]; then
-            #### Data Bags ###################################################
-            # Data bags need to be interated using sub-command "list" in order
-            # to discover elements on each data-bag and finally using "show"
-            # to save it's json on the file-system
-            #
-            data_bag_dir="${dir_path}/${item}"
-
-            if [ ! -d $data_bag_dir ]; then
-                mkdir  $data_bag_dir || \
-                    __die "Can't create directory: \"${data_bag_dir}\""
-            fi
-
-            echo "### \"${cmd}\": \"${item}\" (\"${data_bag_dir}\")"
-
-            # listing attributes of current data-bag
-            declare -a bags=($(__knife_list "${cmd} show ${item}"))
-
-            for bag in "${bags[@]}" ; do
-                target="${data_bag_dir}/${bag}.json"
-                echo "#### Data-bag \"${item}\", \"${bag}\": \"${target}\""
-                __knife_show "${cmd}" "${item} ${bag}" $target
-            done
-
-        else
-            #### Environments, Roles and Nodes ###############################
-            # Or in other words, everyone that can be loaded with Knife's
-            # "show" option are handled here.
-            #
-            target="${dir_path}/${item}.json"
-            echo "### ${cmd}: \"${item}\" (\"${target}\")"
-
-            __knife_show "${cmd}" "${item}" $target
-        fi
-    done
+    [[ $DOWNLOAD == 1 ]] && chef_download "${cmd}"
+    [[ $UPLOAD   == 1 ]] && chef_upload "${cmd}"
 done
 
 # EOF
