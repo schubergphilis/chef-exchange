@@ -253,18 +253,28 @@ function chef_upload () {
     declare -a items=($(/bin/ls -1 ${dir_path} 2> /dev/null))
 
     for item in "${items[@]}"; do
-        echo "Debug -> item #${item}#"
         if   [[ "$entity" == "cookbook" ]]; then
             echo "### Uploading \"${entity}\": \"${item}\" (\"${dir_path}\")"
-            __knife "cookbook cookbook upload ${item}" \
-                "--cookbook-path ${dir_path}"
+            __knife "${entity} upload ${item}" "--cookbook-path ${dir_path}"
         elif [[ "$entity" == "data bag" ]]; then
-            echo "Debug -> data bag upload..."
+            echo "### Uploading \"${entity}\": \"${item}\" (\"${dir_path}\")"
+            __knife "data bag create ${item}"
+            chef_upload_databag "${dir_path}" "${item}"
         else
             target="${dir_path}/${item}"
             echo "### Importing \"${entity}\": \"${target}\""
             __knife "${entity} from file ${target}" > /dev/null
         fi
+    done
+
+}
+
+function chef_upload_databag () {
+    local directory=$1
+    local databag=$2
+    declare -a bags=($(/bin/ls -1 ${directory}/${databag}/*.json 2> /dev/null))
+    for bag in "${bags[@]}"; do
+        __knife "data bag from file ${databag} ${bag}"
     done
 }
 
