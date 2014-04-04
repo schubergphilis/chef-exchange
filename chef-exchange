@@ -262,7 +262,7 @@ function chef_upload () {
         else
             target="${dir_path}/${item}"
             echo "### Importing \"${entity}\": \"${target}\""
-            __knife "${entity} from file \"${target}\""
+            __knife "${entity} from file ${target}"
         fi
     done
 }
