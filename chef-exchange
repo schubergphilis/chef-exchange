@@ -255,12 +255,14 @@ function chef_upload () {
     for item in "${items[@]}"; do
         echo "Debug -> item #${item}#"
         if   [[ "$entity" == "cookbook" ]]; then
-            echo "### Uploading cookbooks:"
+            echo "### Uploading cookbook:"
             __knife "upload cookbooks"
         elif [[ "$entity" == "data bag" ]]; then
             echo "Debug -> data bag upload..."
         else
-            echo "Debug -> something else (${item}) upload..."
+            target="${dir_path}/${item}"
+            echo "### Importing \"${entity}\": \"${target}\""
+            __knife "${entity} from file \"${target}\""
         fi
     done
 }
