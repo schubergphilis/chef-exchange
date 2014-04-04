@@ -285,7 +285,7 @@ if [[ ( ! -z $KNIFE_CONFIG ) && ( ! -e $KNIFE_CONFIG ) ]]; then
     __die "Knife config file (knife.rb) is not found at: \"${KNIFE_CONFIG}\""
 else
     # will be placed among the default knife options
-    KNIFE_OPTS="${KNIFE_OPTS} --config ${KNIFE_CONFIG}"
+    KNIFE_OPTS="${KNIFE_OPTS} -c ${KNIFE_CONFIG}"
 fi
 
 # only download or upload at once
