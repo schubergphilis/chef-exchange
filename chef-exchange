@@ -9,7 +9,7 @@
 # Assumptions we will make, some of them informed by options on command line.
 #
 
-KNIFE="/usr/local/bin/knife"
+KNIFE="$PWD/bin/knife"
 KNIFE_OPTS="--no-color --disable-editing"
 KNIFE_CONFIG=""
 BASE_DIR=""
@@ -80,17 +80,17 @@ standard error output.
 
 ## Usage Examples:
 
- $ ./chef-exchange                  \\
-    --download                      \\
-    --knife   \$PWD/knife           \\
-    --kniferb \$HOME/.chef/knife.rb \\
-    --basedir \$PWD/data/
+ $ ./chef-exchange                          \\
+    --download                              \\
+    --knife   \$PWD/bin/knife               \\
+    --kniferb \$HOME/.chef/knife.rb         \\
+    --basedir \$PWD/data
 
- $ ./chef-exchange                  \\
-    --upload                        \\
-    --knife   \$PWD/knife           \\
-    --kniferb \$PWD/hosted_knife.rb \\
-    --basedir \$PWD/data/
+ $ ./chef-exchange                          \\
+    --upload                                \\
+    --knife   \$PWD/bin/knife               \\
+    --kniferb \$PWD/etc/knife_example.rb    \\
+    --basedir \$PWD/data
 
 ## Options:
 
