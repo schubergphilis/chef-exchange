@@ -2,31 +2,33 @@
 
 ## Abstract
 
-Bash script to migrate or backup Chef Server by using live data exported to
-local file-system. It will download and upload Chef Server data (including
-environment, nodes, roles, cookbooks, data bags) and able to upload it to
-another server by point it toward a different knife.rb file.
+Bash script to migrate or backup a Chef Server by using it's live data
+exported to local file-system. It can download from Chef Server -- including
+environment, nodes, roles, cookbooks and data-bags -- and then upload towards
+another server for instance.
 
 #### The Dangers of Knife
 
-Altoguether with this project you may find a "knife" tool without any plugins
-or checks for git-repos and such. During export and import you don't want to
-have any checks along the way, since it's a backup origin_dir migration tool.
+All together with this project you may find a `knife` tool without any
+plugins or checks for Git repositories and such. During export and import you
+don't want to have any checks along the way, since it's a backup or migration
+tool.
 
 ## Chef Data
 
-The following entities will be confidered during download and upload, they
+The following entities will be configured during download and upload, they
 directly related to knife sub-commands and therefor implement specific ways to
-import and upload those entities. Whenever possible JSON format will be used,
-although for cookbook and data-bags they will be considered as directories.
-Also the same sequence documented here will be applied by this script.
+import (or upload) those entities. Whenever possible `JSON` format will be
+employed, although for cookbook and data-bags they will be considered as
+directories. Also the same sequence documented here will be applied by this
+script.
 
 Data will be stored and looked for under `--basedir` informed directory, they
 also follow the same entities name (with lowered capitals) to create
-underneath directories. Every data re-write will also produce a warning tool
-standard error output.
+underneath data structure. Every piece of data rewritten will also produce a
+warning to standard error output.
 
-* Environment: <`--basedir`>/entironment;
+* Environment: <`--basedir`>/environment;
 * Role: <`--basedir`>/role;
 * Nodes: <`--basedir`>/node;
 * Cookbook: <`--basedir`>/cookbook;
