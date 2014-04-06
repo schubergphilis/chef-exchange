@@ -1,0 +1,17 @@
+#!/opt/chef/embedded/bin/ruby
+# Knife command without any plugins or repository checks.
+#
+
+require 'rubygems'
+
+version = ">= 0"
+
+if ARGV.first =~ /^_(.*)_$/ and Gem::Version.correct? $1 then
+  version = $1
+  ARGV.shift
+end
+
+gem 'chef', version
+load Gem.bin_path('chef', 'knife', version)
+
+# EOF
